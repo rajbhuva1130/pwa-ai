@@ -83,7 +83,7 @@ def ChatBot(query):
 
         # Call Groq API
         completion = client.chat.completions.create(
-            model="llama3-8b-8192",  # change to llama3-70b-8192 if needed
+            model="meta-llama/llama-4-scout-17b-16e-instruct",  # change to llama3-70b-8192 if needed
             messages=formatted_msgs,
             max_tokens=1024,
             temperature=0.7,

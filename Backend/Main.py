@@ -1,11 +1,11 @@
 # Main.py
 
-from Backend.Model import FirstLayerDMM
-from Backend.RealtimeSearchEngine import RealtimeSearchEngine
-from Backend.Automation import Automation
-from Backend.SpeechToText import SpeechRecognition
-from Backend.Chatbot import ChatBot
-from Backend.TextToSpeech import TextToSpeech
+from .Model import FirstLayerDMM
+from .RealtimeSearchEngine import RealtimeSearchEngine
+from .Automation import Automation
+from .SpeechToText import SpeechRecognition
+from .Chatbot import ChatBot
+from .TextToSpeech import TextToSpeech
 
 from fastapi import FastAPI, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -283,7 +283,7 @@ def process_query(Query: str) -> str:
             with open(r"Frontend\Files\ImageGeneration.data", "w", encoding="utf-8") as file:
                 file.write(f"{ImageGenerationQuery},True")
             p1 = subprocess.Popen(
-                ['python', r'Backend\ImageGeneration.py'],
+                ['python', r'ImageGeneration.py'],
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 stdin=subprocess.PIPE, shell=False
             )

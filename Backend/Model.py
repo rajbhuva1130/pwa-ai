@@ -84,7 +84,7 @@ def FirstLayerDMM(prompt: str = "test"):
 
     # Create a streaming chat session with the Cohere model.
     stream = co.chat_stream(
-        model='command-r-plus',  # Specify the Cohere model to use.
+        model='command-a-03-2025',  # Specify the Cohere model to use.
         message=prompt,          # Pass the user's query.
         temperature=0.7,         # Set the creativity level of the model.
         chat_history=normalize_chat_history(ChatHistory),  # Ensured role formatting

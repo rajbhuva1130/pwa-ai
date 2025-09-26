@@ -87,7 +87,7 @@ def RealtimeSearchEngine(prompt):
 
     # Generate a response using the Groq client.
     completion = client.chat.completions.create(
-        model="llama3-70b-8192",
+        model="meta-llama/llama-4-scout-17b-16e-instruct", # Specify the Groq model to use.
         messages=SystemChatBot + [{"role": "system", "content": Information()}] + messages,
         temperature=0.7,
         max_tokens=2048,
