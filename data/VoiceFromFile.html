@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+    <html lang="en">
+    <body>
+        <audio id="player" autoplay>
+            <source src="file:///Data/recording.wav" type="audio/wav">
+        </audio>
+        <p id="output"></p>
+        <script>
+            const output = document.getElementById('output');
+            let recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'gu';
+            recognition.continuous = false;
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                output.textContent = transcript;
+            };
+            recognition.start();
+        </script>
+    </body>
+    </html>

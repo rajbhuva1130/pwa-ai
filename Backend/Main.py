@@ -3,11 +3,11 @@
 from .Model import FirstLayerDMM
 from .RealtimeSearchEngine import RealtimeSearchEngine
 from .Automation import Automation
-from .SpeechToText import SpeechRecognition
+from .SpeechToText import SpeechRecognitionFromFile
 from .Chatbot import ChatBot
 from .TextToSpeech import TextToSpeech
 
-from fastapi import FastAPI, Form, UploadFile
+from fastapi import FastAPI, Form, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import dotenv_values
 
@@ -16,6 +16,8 @@ import re
 import os
 import subprocess
 from typing import Optional, Tuple, Dict, Any
+import signal
+import multiprocessing
 
 # NEW: for safe Automation launch inside FastAPI's event loop
 import asyncio
@@ -345,15 +347,48 @@ async def chat_endpoint(prompt: str = Form(...)):
     Answer = process_query(prompt)
     return {"response": Answer}
 
+processes = {}
+
+def run_stt(path, queue):
+    try:
+        text = SpeechRecognitionFromFile(path)
+        queue.put(text)
+    except Exception as e:
+        queue.put(f"Error: {e}")
+
 @app.post("/stt")
-async def speech_to_text_endpoint(file: UploadFile):
-    text = SpeechRecognition()
-    return {"text": text}
+async def speech_to_text_endpoint(file: UploadFile = File(...)):
+    temp_path = f"Data/{file.filename}"
+    with open(temp_path, "wb") as f:
+        f.write(await file.read())
+
+    try:
+        text = SpeechRecognitionFromFile(temp_path)
+        return {"text": text}
+    except Exception as e:
+        return {"text": "", "error": str(e)}
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
 @app.post("/tts")
 async def text_to_speech_endpoint(text: str = Form(...)):
     audio_path = TextToSpeech(text)
     return {"audio_file": audio_path}
+
+# Keep track of subprocesses
+running_processes = []
+
+@app.post("/stop")
+async def stop_process():
+    killed = 0
+    for pid, proc_info in list(processes.items()):
+        if proc_info["process"].is_alive():
+            proc_info["process"].terminate()
+            killed += 1
+        del processes[pid]
+    return {"status": "stopped", "killed": killed}
+    
 
 # =========================
 # ENTRY POINT

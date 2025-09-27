@@ -6,140 +6,77 @@ from webdriver_manager.chrome import ChromeDriverManager
 from dotenv import dotenv_values
 import os
 import mtranslate as mt
+import time
 
-# Load environment variables from the .env file.
+# Load environment variables
 env_vars = dotenv_values(".env")
+Inputlanguage = env_vars.get("InputLanguage") or "en"
 
-# Get the input language setting from the environment variables.
-Inputlanguage = env_vars.get("InputLanguage")
-
-# Define the HTML code for the speech recognition interface.
-HtmlCode = '''<!DOCTYPE html>
-<html lang="en">
-<head>
-    <title>Speech Recognition</title>
-</head>
-<body>
-    <button id="start" onclick="startRecognition()">Start Recognition</button>
-    <button id="end" onclick="stopRecognition()">Stop Recognition</button>
-    <p id="output"></p>
-    <script>
-        const output = document.getElementById('output');
-        let recognition;
-
-        function startRecognition() {
-            recognition = new webkitSpeechRecognition() || new SpeechRecognition();
-            recognition.lang = '';
-            recognition.continuous = true;
-
-            recognition.onresult = function(event) {
-                const transcript = event.results[event.results.length - 1][0].transcript;
-                output.textContent += transcript;
-            };
-
-            recognition.onend = function() {
-                recognition.start();
-            };
-            recognition.start();
-        }
-
-        function stopRecognition() {
-            recognition.stop();
-            output.innerHTML = "";
-        }
-    </script>
-</body>
-</html>'''
-
-# Replace the language setting in the HTML code with the input language from the environment variables.
-HtmlCode = str(HtmlCode).replace("recognition.lang = '';", f"recognition.lang = '{Inputlanguage}';")
-
-# Write the modified HTML code to a file.
-with open(r"Data\Voice.html", "w") as f:
-    f.write(HtmlCode)
-
-# Get the current working directory.
-current_dir = os.getcwd()
-
-# Generate the file path for the HTML file.
-Link = f"{current_dir}/Data/Voice.html"
-
-# Set Chrome options for the webdriver.
-chrome_options = Options()
-user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.142.86 Safari/537.36"
-chrome_options.add_argument(f'user-agent={user_agent}')
-chrome_options.add_argument("--use-fake-ui-for-media-stream")
-chrome_options.add_argument("--use-fake-device-for-media-stream")
-chrome_options.add_argument("--headless=new")
-
-# Initialize the Chrome WebDriver using the ChromeDriverManager.
-service = Service(ChromeDriverManager().install())
-driver = webdriver.Chrome(service=service, options=chrome_options)
-
-# Define the path for temporary files.
-TempDirPath = rf"{current_dir}/Frontend/Files"
-
-# Function to set the assistant's status by writing it to a file.
-def SetAssistantStatus(Status):
-    with open(rf'{TempDirPath}/Status.data', 'w', encoding='utf-8') as file:
-        file.write(Status)
-
-# Function to modify a query to ensure proper punctuation and formatting.
 def QueryModifier(Query):
     new_query = Query.lower().strip()
-    query_words = new_query.split()
-    question_words = ["how", "what", "who", "where", "when", "why", "which", "whose", "whom", "can you", "what's", "where's", "how's", "can you"]
-
-    # Check if the query is a question and add a question mark if necessary.
+    question_words = ["how", "what", "who", "where", "when", "why", "which", "whose", "whom", "can you", "what's", "where's", "how's"]
     if any(word + " " in new_query for word in question_words):
-        if query_words[-1][-1] in ['.', '?', '!']:
-            new_query = new_query[:-1] + "?"
-        else:
-            new_query += "?"
+        return new_query.rstrip(".?!") + "?"
     else:
-        # Add a period if the query is not a question.
-        if query_words[-1][-1] in ['.', '?', '!']:
-            new_query = new_query[:-1] + "."
-        else:
-            new_query += "."
+        return new_query.rstrip(".?!") + "."
 
-    return new_query.capitalize()
-
-# Function to translate text into English using the mtranslate library.
 def UniversalTranslator(Text):
     english_translation = mt.translate(Text, "en", "auto")
     return english_translation.capitalize()
 
-# Function to perform speech recognition using the WebDriver.
-def SpeechRecognition():
-    # Open the HTML file in the browser.
-    driver.get("file:///" + Link)
-    # Start speech recognition by clicking the start button.
-    driver.find_element(by=By.ID, value="start").click()
+def SpeechRecognitionFromFile(file_path: str):
+    """Run Selenium webkitSpeechRecognition on a given audio file."""
+    # Create temporary HTML that auto-plays audio
+    HtmlCode = f'''<!DOCTYPE html>
+    <html lang="en">
+    <body>
+        <audio id="player" autoplay>
+            <source src="file:///{file_path}" type="audio/wav">
+        </audio>
+        <p id="output"></p>
+        <script>
+            const output = document.getElementById('output');
+            let recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = '{Inputlanguage}';
+            recognition.continuous = false;
+            recognition.onresult = function(event) {{
+                const transcript = event.results[0][0].transcript;
+                output.textContent = transcript;
+            }};
+            recognition.start();
+        </script>
+    </body>
+    </html>'''
 
-    while True:
-        try:
-            # Get the recognized text from the HTML output element.
-            Text = driver.find_element(by=By.ID, value="output").text
+    html_path = os.path.join("Data", "VoiceFromFile.html")
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(HtmlCode)
 
-            if Text:
-                # Stop recognition by clicking the stop button.
-                driver.find_element(by=By.ID, value="end").click()
+    # Chrome options
+    chrome_options = Options()
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--use-fake-ui-for-media-stream")
+    chrome_options.add_argument("--use-fake-device-for-media-stream")
+    chrome_options.add_argument("--log-level=3")
+    chrome_options.add_experimental_option("excludeSwitches", ["enable-logging"])
 
-                # If the input language is English, return the modified query.
-                if Inputlanguage.lower() == "en" or "en" in Inputlanguage.lower(): # type: ignore
-                    return QueryModifier(Text)
-                else:
-                    # If the input language is not English, translate the text and return it.
-                    SetAssistantStatus("Translating...")
-                    return QueryModifier(UniversalTranslator(Text))
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
-        except Exception as e:
-            pass
+    try:
+        driver.get("file:///" + os.path.abspath(html_path))
 
-# Main execution block.
-if __name__ == "__main__":
-    while True:
-        # Continuously perform speech recognition and print the recognized text.
-        Text = SpeechRecognition()
-        print(Text)
+        # Wait up to 10 seconds for result
+        for _ in range(20):
+            try:
+                text = driver.find_element(By.ID, "output").text
+                if text:
+                    if "en" in Inputlanguage.lower():
+                        return QueryModifier(text)
+                    else:
+                        return QueryModifier(UniversalTranslator(text))
+            except Exception:
+                pass
+            time.sleep(0.5)
+        return ""
+    finally:
+        driver.quit()  # ✅ Always close Chrome

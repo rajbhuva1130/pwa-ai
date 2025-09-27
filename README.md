@@ -94,6 +94,11 @@ Notes:
 ```cmd
 REM ensure virtual env is activated
 python Main.py
+
+or
+
+uvicorn backend.Main:app --host 0.0.0.0 --port 8000 --reload
+
 ```
 
 This runs `uvicorn` from `Main.py` and serves the API at http://0.0.0.0:8000
